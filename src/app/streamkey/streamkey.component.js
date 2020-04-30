@@ -20,8 +20,8 @@
         }
 
         $scope.login = {
-            user: "lucascosta4590",
-            password: "lucasfrct@2020",
+            user: "",
+            password: "",
         }
         
         $scope.code = ""
