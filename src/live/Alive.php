@@ -2,36 +2,103 @@
 
 Class Alive
 {
+    public static $id = ''; 
     public static $user = '';
     public static $password = '';
-    public static $id = ''; 
-    public static $response = [ "server"=> '', "key"=> '', "error"=> []];
-    
+    public static $response = [ 
+        "id"=> "",
+        "user"=> "", 
+        "password"=> "",
+        "require"=>false,
+        "code"=> "",
+        "server"=> '', 
+        "key"=> '', 
+        "status"=> [ ],
+        "error"=> [ ]
+    ];
 
-    public static function login($ig) 
+    public static $url = "";
+
+    public static function name ( $id = "" )
     {
-        Archive::$url = 'keys/'.Alive::$id.'.stream.json'; 
-        Archive::write(json_encode(Alive::$response));
+        return ( empty ( self::$id ) ) ? "error.json" : self::$id.".json";
+    }
 
+    public static function login ( $ig ) 
+    {
+        self::$response [ "id" ] = self::$id;
+        self::$response [ "user" ] = self::$user;
+        self::$response [ "password" ] = self::$password;
+
+        self::$url = 'keys/'.self::name ( self::$id ); 
+        
+        Archive::write ( self::$url, json_encode ( self::$response ) );
+        
         try {
-
-            $loginResponse =  $ig->login(Alive::$user, Alive::$password);
             
-            /*if ($loginResponse !== null && $loginResponse->isTwoFactorRequired()) {
-                $twoFactorIdentifier = $loginResponse->getTwoFactorInfo()->getTwoFactorIdentifier();
-                $verificationCode = readline("Code: ");
-                $ig->finishTwoFactorLogin(IG_USERNAME, IG_PASS, $twoFactorIdentifier, $verificationCode);
-            }*/
+            $loginResponse =  $ig->login ( self::$user, self::$password );
+
+            if ( $loginResponse !== null && $loginResponse->isTwoFactorRequired ( ) ) {
+                
+                self::$response [ "require" ] = true;
+                
+                Archive::write ( self::$url, json_encode ( self::$response ) );
+                
+                $twoFactorIdentifier = $loginResponse->getTwoFactorInfo ( )->getTwoFactorIdentifier ( );
+
+                $verificationCode = "";
+
+                $time_start = microtime ( true ); 
+
+                $execution_time = 0;
+                
+                while( $execution_time < 60 ) {
+
+                    $time_end = microtime ( true );
+
+                    $execution_time = ( $time_end - $time_start ) / 60;
+
+                    $res = json_decode ( Archive::read ( self::$url ), true );
+                    
+                    if ( !empty ( $res [ "code" ] ) ) {
+
+                        self::$response [ "code" ] = $res [ "code" ];
+                        $verificationCode = $res [ "code" ];
+
+                        $execution_time = 100;
+
+                        array_push ( self::$response [ "status" ] , array ( "code"=> self::$response [ "code" ] ) );
+                    }
+                    
+                    sleep ( 1 );
+                }
+
+                $ig->finishTwoFactorLogin ( self::$user, self::$password, $twoFactorIdentifier, $verificationCode );
+
+            }
+
+            array_push ( self::$response [ "status" ] , array ( "acess_login"=> "OK" ) );
 
         } catch(\Exception $e) {
-            array_push(Alive::$response["error"], array("Error_login"=>$e->getMessage()));
+
+            array_push ( self::$response [ "error" ], array ( "Error_login"=> $e->getMessage ( ) ) );
+
         }
+
+        Archive::write ( self::$url, json_encode ( self::$response ) );
+
     }
 
     //Block Responsible for Creating the Livestream.
     public static function broadcast($ig)
     {
         try {
+
+            if ( count ( self::$response [ "error" ] ) > 0 ) {
+                exit();
+                return false;
+                die ( "error" );
+            }
 
             if (!$ig->isMaybeLoggedIn) { exit(); }
 
@@ -49,27 +116,27 @@ Class Alive
             $streamUrl = $split[0];
             $streamKey = $broadcastId.$split[1];
 
-            Alive::$response["server"] = $streamUrl;
-            Alive::$response["key"] = $streamKey;
+            self::$response [ "server" ] = $streamUrl;
+            self::$response [ "key" ] = $streamKey;
             
-            Archive::$url = 'keys/'.Alive::$id.'.stream.json'; 
-            Archive::write(json_encode(Alive::$response));
+            self::$url = 'keys/'.self::name ( self::$id );
+            Archive::write ( self::$url, json_encode ( self::$response ) );
 
-            Alive::newCommand($ig->live, $broadcastId, $streamUrl, $streamKey);
+            self::newCommand($ig->live, $broadcastId, $streamUrl, $streamKey);
             
             $ig->live->getFinalViewerList($broadcastId);
+
             $ig->live->end($broadcastId); 
 
 
         } catch (\Exception $e) {
-            array_push(Alive::$response, array( 'Error_broadcast'=> $e->getMessage()));
+            array_push ( self::$response, array( 'Error_broadcast'=> $e->getMessage ( ) ) );
         }
 
     }
 
-    public static function newCommand(Live $live, $broadcastId, $streamUrl, $streamKey) 
+    public static function newCommand ( Live $live, $broadcastId, $streamUrl, $streamKey ) 
     {
-
         $handle = fopen ("php://stdin","r");
     
         $line = trim(fgets($handle));
@@ -116,8 +183,7 @@ Class Alive
     
         fclose($handle);
         
-        
-        Alive::newCommand($live, $broadcastId, $streamUrl, $streamKey);
+        self::newCommand($live, $broadcastId, $streamUrl, $streamKey);
         
     }
 }

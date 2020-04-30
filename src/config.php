@@ -1,5 +1,7 @@
 <?php
 
-define('ID', $_POST['id']);
-define('USER', $_POST['user']);
-define('PASSWORD', $_POST['password']);
+define ( 'ID', $post [ "id" ] );
+define ( 'IG_USERNAME', $post [ "user" ] );
+define ( 'IG_PASS', $post [ "password" ] );
+define ( 'SERVER', "" );
+define ( 'KEY', "" );

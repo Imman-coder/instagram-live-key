@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" ng-app="insta">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,66 +7,31 @@
         <meta http-equiv='expires' content='0'>
         <meta http-equiv='pragma' content='no-cache'>
 
+        <title>InstaLiveKey</title>
+
         <link rel="shortcut icon" href="src/assets/images/id.png" />
 
-        <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-        <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+        <link rel="stylesheet" href="src/assets/lib/materialize-1.0.0/css/materialize.min.css">
+        <link rel="stylesheet" href="src/assets/lib/materialize-font/materialize.font.css">
 
-        <link rel="stylesheet" href="src/assets/css/main.css">
-        <link rel="stylesheet" href="src/assets/css/medias.css">
+        <link rel="stylesheet" href="src/assets/css/reset.css">
         
-        <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+        <script src="src/assets/lib/materialize-1.0.0/js/materialize.min.js"></script>
+        <script src="src/assets/lib/angular.min.js"></script>
+        <script src="src/assets/lib/angular-route.min.js"></script>
 
-        <title>InstaLiveKey</title>
+        <script src="src/app/insta.module.js"></script>
+
+        <script src="src/app/form/input.directive.js"></script>
+
+        <script src="src/app/header/header.component.js"></script>
+
+        <script src="src/app/streamkey/streamkey.service.js"></script>
+        <script src="src/app/streamkey/streamkey.component.js"></script>
 
     </head>
     <body>
-        
-        <figure class="logo">
-            <img src="src/assets/images/logo.png" />
-        </figure>
-        
-        <section>
-            <p>Entre no Instagram no seu computador com OBS, XSplit, vMix, SLOBS, Wirecast, VidBlasterX 
-                ou qualquer outro software de streaming.</p>
-        </section>
-
-        <form class="form" method="post">
-            <legend>LOGIN PARA INSTAGRAM</legend>
-   
-            <div class="duser mdl-textfield mdl-js-textfield">
-                <input class="user mdl-textfield__input" type="text" id="user" name="user" value="">
-                <label class="mdl-textfield__label" for="user">Usuário</label>
-            </div>
-
-            <div class="dpass mdl-textfield mdl-js-textfield">
-                <input class="password mdl-textfield__input" type="password" id="pass" name="password" value="">
-                <label class="mdl-textfield__label" for="pass">Senha</label>
-            </div>
-
-            <div class="dcode mdl-textfield mdl-js-textfield">
-                <input class="code mdl-textfield__input" type="number" id="code" name="code" value="">
-                <label class="mdl-textfield__label" for="code">Code</label>
-            </div>
-            
-            <button type="button" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent">Send</button>
-            <div class="form-bar mdl-progress mdl-js-progress mdl-progress__indeterminate"></div>        
-        </form>
-
-        <section>
-            <h5>Servidor</h5>
-            <span class="server"></span>
-            <h5>Chave de trasmissão</h5>
-            <span class="key"></span>
-        </section>
-
-        <div class="error">
-            <p></p>
-        </div>
-
+        <header class="row"></header>
+        <streamkey class="row"></streamkey>
     </body>
 </html>
-
-<script src="src/assets/js/jquery.js"></script>
-<script src="src/assets/js/Observer.js"></script>
-<script src="src/assets/js/main.js"></script>
