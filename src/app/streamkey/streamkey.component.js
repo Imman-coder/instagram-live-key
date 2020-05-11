@@ -1,7 +1,7 @@
 (()=> {
 
     angular
-        .module("insta")
+        .module("instagramlivekey")
         .component("streamkey", {
             templateUrl: "src/app/streamkey/streamkey.html",
             controller: [ "$scope", "$timeout", "streamkey.service", StreamKeyController ],    
@@ -17,18 +17,23 @@
             bar: false,
             code: false,
             form: true,
-        }
-
-        $scope.login = {
-            user: "",
-            password: "",
+            invalid: false,
         }
         
         $scope.code = ""
 
         $scope.stream = {
+            status: [],
+            required: false,
+            id: "",
+            user: "",
+            code: "",
+            password: "",
             server: "",
-            key: ""
+            key: "",
+            server: "",
+            key: "",
+            broadcast: "",
         }
         
         $scope.copy = (id)=> {
@@ -41,25 +46,27 @@
             M.toast({ html: 'Copiado com sucesso' })
         }
 
-        $scope.getstream = (login)=> {
+        $scope.getstream = (stream)=> {
+
 
             $scope.control.bar = true
+            $scope.control.invalid = false
             
             if (!$scope.control.code) {
                 
-                login.id = IdCreate(login.user);
+                stream.id = IdCreate(stream.user);
                 
-                eventCode(login.id)
+                eventCode(stream.id)
                 
-                service.stream(login).then((data)=> {
-                    console.log("STREAM RESPONSE", data.data)
+                service.stream(stream).then((data)=> {
+                    console.log("STREAM RESPONSE =======================================", data.data)
                     $scope.control.bar = false
                     $scope.loaded()
                 })
 
             }
 
-            if ($scope.control.code) { sendCode(login) }
+            if ($scope.control.code) { sendCode(stream) }
             
         }
 
@@ -67,45 +74,44 @@
             EventCode = new EventSource("src/observer.code.php?id="+id)
 
             EventCode.addEventListener("code", function(event) {
+
+                var stream = JSON.parse(event.data)
                 
-                console.log("EVENT CODE TRIGGER: ", event.data)
+                console.log("EVENT CODE TRIGGER: ", stream )
+
+                if (stream.require == true) {
+                    $scope.stream.require = true
+                    $scope.control.code = true
+                    $scope.control.bar = false
+                }
     
-                if ((event.data !== "{}") && compareLogin(String(event.data))) {
-
-                    //console.log("EVENT CODE TRIGGER: ", event.data)
-                                            
-                    $scope.login = JSON.parse(event.data)
-
-                    if ($scope.login.error.length > 0) {
+                stream.status.map((item)=> {
+                    if (item.LoginError && item.LoginError.length > 0 && !$scope.control.invalid) {
+                        $scope.control.invalid = true
                         M.toast({ html: 'Favor inserir usuário e senha válidos' })
                     }
-                        
-                    if ($scope.login.require == true) {
-
-                        $scope.control.code = true
-                        $scope.control.bar = false
-                    }
-
-                    if ($scope.login.key) {
-                        
-                        $scope.control.form = false
-                        $scope.control.bar = false
-
-                        $scope.stream.server = $scope.login.server
-                        $scope.stream.key = $scope.login.key
-                        
-                        $scope.loaded()
-
-                    }
+                })
                     
-                    $scope.$apply()
+            
+                if (stream.server && stream.key) {
+                    stream.password = $scope.stream.password
+                    $scope.stream = stream
+                    $scope.control.form = false
+                    $scope.control.bar = false
+
+                    $scope.loaded()
+                    EventCode.close()
+
                 }
+                
+                $scope.$apply()
+    
             
             })
         }
 
         function compareLogin(str) {
-            return (String(JSON.stringify(angular.copy($scope.login))) != str)
+            return (String(JSON.stringify(angular.copy($scope.stream))) != str)
         } 
 
         function sendCode(login) {

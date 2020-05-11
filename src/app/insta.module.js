@@ -1,5 +1,0 @@
-(()=> {
-
-    angular
-        .module("insta", ['ngRoute'])
-}) ()

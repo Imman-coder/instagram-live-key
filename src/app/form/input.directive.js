@@ -2,7 +2,7 @@
 
 
     angular
-        .module("insta")
+        .module("instagramlivekey")
         .directive('filepath', ['$timeout', inputFileDirective])
 
     function inputFileDirective($timeout) {

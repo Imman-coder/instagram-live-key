@@ -1,189 +1,189 @@
 <?php 
+ /*
+  * Autor: Lucas Costa
+  * Data: Abril de 2020
+  * Alive::Login ( $ig, $user, $password )
+  */
+
+require_once ( "Archive.php" );
+
+set_time_limit(0);
+date_default_timezone_set('UTC');
 
 Class Alive
 {
-    public static $id = ''; 
-    public static $user = '';
-    public static $password = '';
-    public static $response = [ 
-        "id"=> "",
-        "user"=> "", 
-        "password"=> "",
-        "require"=>false,
-        "code"=> "",
-        "server"=> '', 
-        "key"=> '', 
-        "status"=> [ ],
-        "error"=> [ ]
-    ];
+    public static $src = "";
+    public static $status = [];
+    
+    # Login 
+    public static function Login ( &$ig ): array 
+    { 
+        self::update ( function ( &$stream ) {
+            $GLOBALS [ "user" ] = $stream [ "user" ];
+            $GLOBALS [ "password" ] = $stream [ "password" ];
+            return $stream;
+        } );
 
-    public static $url = "";
-
-    public static function name ( $id = "" )
-    {
-        return ( empty ( self::$id ) ) ? "error.json" : self::$id.".json";
-    }
-
-    public static function login ( $ig ) 
-    {
-        self::$response [ "id" ] = self::$id;
-        self::$response [ "user" ] = self::$user;
-        self::$response [ "password" ] = self::$password;
-
-        self::$url = 'keys/'.self::name ( self::$id ); 
-        
-        Archive::write ( self::$url, json_encode ( self::$response ) );
-        
         try {
             
-            $loginResponse =  $ig->login ( self::$user, self::$password );
+            $loginResponse =  $ig->login ( $GLOBALS [ "user" ], $GLOBALS [ "password" ] );
 
-            if ( $loginResponse !== null && $loginResponse->isTwoFactorRequired ( ) ) {
+            if ( $loginResponse !== null && $loginResponse->isTwoFactorRequired() ) {
                 
-                self::$response [ "require" ] = true;
-                
-                Archive::write ( self::$url, json_encode ( self::$response ) );
-                
-                $twoFactorIdentifier = $loginResponse->getTwoFactorInfo ( )->getTwoFactorIdentifier ( );
+                $twoFactorIdentifier = $loginResponse->getTwoFactorInfo()->getTwoFactorIdentifier();
 
-                $verificationCode = "";
+                $verificationCode = self::verificationCode ( self::$src, 60 );
 
-                $time_start = microtime ( true ); 
-
-                $execution_time = 0;
-                
-                while( $execution_time < 60 ) {
-
-                    $time_end = microtime ( true );
-
-                    $execution_time = ( $time_end - $time_start ) / 60;
-
-                    $res = json_decode ( Archive::read ( self::$url ), true );
-                    
-                    if ( !empty ( $res [ "code" ] ) ) {
-
-                        self::$response [ "code" ] = $res [ "code" ];
-                        $verificationCode = $res [ "code" ];
-
-                        $execution_time = 100;
-
-                        array_push ( self::$response [ "status" ] , array ( "code"=> self::$response [ "code" ] ) );
-                    }
-                    
-                    sleep ( 1 );
-                }
-
-                $ig->finishTwoFactorLogin ( self::$user, self::$password, $twoFactorIdentifier, $verificationCode );
+                $ig->finishTwoFactorLogin ( $GLOBALS [ "user" ], $GLOBALS [ "password" ], $twoFactorIdentifier, $verificationCode );
 
             }
 
-            array_push ( self::$response [ "status" ] , array ( "acess_login"=> "OK" ) );
+            array_push ( self::$status, array ( "LoginSuccess"=> "User: ".$GLOBALS [ "user" ] ) );
 
-        } catch(\Exception $e) {
-
-            array_push ( self::$response [ "error" ], array ( "Error_login"=> $e->getMessage ( ) ) );
+        } catch ( \Exception $e ) {
+            $ig = null;
+            self::CleanSession($ig);
+            array_push ( self::$status, array ( "LoginError"=> "User: ".$GLOBALS [ "user" ]." | ".$e->getMessage ( ) ) );
+            echo $e->getMessage();
 
         }
 
-        Archive::write ( self::$url, json_encode ( self::$response ) );
+        self::update ( function ( &$stream ) {
+            $stream [ "status" ] = self::$status;
+            return $stream;
+        } );
+
+        return self::$status;
 
     }
 
-    //Block Responsible for Creating the Livestream.
-    public static function broadcast($ig)
+    # habilita verificação de dois fatores
+    public static function verificationCode ( string $src = "", $wait = 10 )
     {
-        try {
+        array_push ( self::$status, array ( "Code"=> "Require Verification: ".$GLOBALS [ "user" ] ) );
 
-            if ( count ( self::$response [ "error" ] ) > 0 ) {
-                exit();
-                return false;
-                die ( "error" );
+        self::update ( function ( &$stream ) { 
+            $stream [ "required" ] = true;
+            $stream [ "status" ] = self::$status; 
+            return $stream;
+        } );
+
+
+        ob_end_clean ( );
+        ob_start ( );
+
+        $code = "";
+        
+        $time = 0;
+        
+        $timeStart = microtime ( true );
+
+        do {
+
+            $timeCurrent = microtime ( true );
+
+            $time  = ( $timeCurrent - $timeStart );
+
+            $stream =  json_decode ( Archive::read ( $src ), true );
+            
+            if ( !empty ( $stream ) && true == $stream [ "required" ] && !empty ( $stream [ "code" ] ) ) {
+                
+                $code = base64_decode($stream [ "code" ]);
+                
+                array_push ( self::$status , array ( "Code"=> "OK. Código obtido: {$code}" ) );
+
+                self::update( function ( &$stream ) { 
+                    $stream [ "status" ] = self::$status;
+                    $stream [ "required" ] = false;
+                    $stream [ "code" ] = "";
+                    return $stream;
+                } );
+
+
+                break;
             }
 
-            if (!$ig->isMaybeLoggedIn) { exit(); }
+            ob_flush ( );
+            flush ( );
+            sleep ( 1 );
 
-            $stream = $ig->live->create();
-            
-            $broadcastId = $stream->getBroadcastId();
-            
-            $ig->live->start($broadcastId);
+        } while ( $time < $wait );
+
+        ob_end_flush ( );
+
+        return $code;
+    }
+
+    # obtem a URL com seridor e chave para acesso ao braodcast
+    public static function StreamKey ( &$ig ) {
         
-            $streamUploadUrl = $stream->getUploadUrl();
-
-            //Grab the stream url as well as the stream key.
-            $split = preg_split("[".$broadcastId."]", $streamUploadUrl);
-
-            $streamUrl = $split[0];
-            $streamKey = $broadcastId.$split[1];
-
-            self::$response [ "server" ] = $streamUrl;
-            self::$response [ "key" ] = $streamKey;
+        try {
+            if ( null != $ig ) {
+                $stream = $ig->live->create();
             
-            self::$url = 'keys/'.self::name ( self::$id );
-            Archive::write ( self::$url, json_encode ( self::$response ) );
+                $broadcastId = $stream->getBroadcastId();
+                
+                $ig->live->start($broadcastId);
+                
+                $streamUploadUrl = $stream->getUploadUrl();
+                
+                $split = preg_split("[".$broadcastId."]", $streamUploadUrl);
 
-            self::newCommand($ig->live, $broadcastId, $streamUrl, $streamKey);
-            
-            $ig->live->getFinalViewerList($broadcastId);
+                $GLOBALS [ "streamUrl" ] = $split [0];
+                $GLOBALS [ "streamKey" ] = $broadcastId.$split[1];
+                $GLOBALS [ "broadcast" ] = $streamUploadUrl;
 
-            $ig->live->end($broadcastId); 
+                array_push ( self::$status, array ( "Stream"=> "start broadcast and Get server and key ") );
+                
+                self::update ( function ( &$stream ) {
+                    $stream [ "server" ] = $GLOBALS [ "streamUrl" ];
+                    $stream [ "key" ] = $GLOBALS [ "streamKey" ];
+                    $stream [ "broadcast" ] = $GLOBALS [ "broadcast" ];
+                    $stream [ "status" ] = self::$status;
 
+                    return $stream;
+                } );
 
-        } catch (\Exception $e) {
-            array_push ( self::$response, array( 'Error_broadcast'=> $e->getMessage ( ) ) );
+            }
+
+            self::CleanSession($ig);
+
+        } catch ( \Exception $e) {
+            self::CleanSession($ig);
+            array_push ( self::$status, array ( "StreamError"=> $e->getMessage()) );
+            echo $e->getMessage();
         }
 
+        self::update ( function ( &$stream ) {
+            $stream [ "status" ] = self::$status;
+            return $stream;
+        } );
     }
 
-    public static function newCommand ( Live $live, $broadcastId, $streamUrl, $streamKey ) 
+    public static function update ( $fn ) 
     {
-        $handle = fopen ("php://stdin","r");
-    
-        $line = trim(fgets($handle));
-    
-        if($line == 'ecomments') {
-            $live->enableComments($broadcastId);
-    
-        } elseif ($line == 'dcomments') {
-            $live->disableComments($broadcastId);
-    
-        } elseif ($line == 'stop' || $line == 'end') {
-            fclose($handle);
-    
-            //Needs this to retain, I guess?
-            $live->getFinalViewerList($broadcastId);
-            $live->end($broadcastId);
-    
-            $handle = fopen ("php://stdin","r");
-            $archived = trim(fgets($handle));
-    
-            if ($archived == 'yes') {
-                $live->addToPostLive($broadcastId);
+        $stream = json_decode ( Archive::read ( self::$src ), true );
+
+        $stream = $fn ( $stream ); 
+
+        Archive::write ( self::$src, json_encode ( $stream ) );
+    }
+
+    public static function CleanSession ( &$ig ) 
+    {   
+        $ig = null;
+        if (isset($_SERVER['HTTP_COOKIE'])) {
+            $cookies = explode(';', $_SERVER['HTTP_COOKIE']);
+            foreach($cookies as $cookie) {
+                $parts = explode('=', $cookie);
+                $name = trim($parts[0]);
+                setcookie($name, '', time()-1000);
+                setcookie($name, '', time()-1000, '/');
             }
-    
-            exit();
-    
-        } elseif ($line == 'url') { } 
-        elseif ($line == 'key') { } 
-        elseif ($line == 'info') {
-            
-            $info = $live->getInfo($broadcastId);
-            $status = $info->getStatus();
-            $muted = var_export($info->is_Messages(), true);
-            $count = $info->getViewerCount();
-    
-        } elseif ($line == 'viewers') {
-    
-            $live->getInfo($broadcastId);
-    
-            foreach ($live->getViewerList($broadcastId)->getUsers() as &$cuser) { }
-    
-        } elseif ($line == 'help') { } 
-        else { }
-    
-        fclose($handle);
-        
-        self::newCommand($live, $broadcastId, $streamUrl, $streamKey);
-        
+        }
+
+        session_unset ( );
     }
 }
+
+

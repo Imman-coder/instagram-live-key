@@ -1,0 +1,5 @@
+(()=> {
+
+    angular
+        .module("instagramlivekey", ['ngRoute'])
+}) ()

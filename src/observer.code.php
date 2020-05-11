@@ -7,7 +7,6 @@ $id = $_GET [ "id" ] ?? "";
 $data = "";
 
 if ( !empty ( $id ) ) {
-    $data = Archive::read ( "keys/".$id.".json" );
+    $data = Archive::read ( "keys/".$id.".log" );
+    Observer::EventCreate ( 'code', $data );
 }
-
-Observer::EventCreate ( 'code', $data );

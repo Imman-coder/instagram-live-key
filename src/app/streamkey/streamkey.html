@@ -56,13 +56,13 @@
 
     <div class="input-field col s12" ng-show="!control.code">
         <i class="material-icons prefix">account_circle</i>
-        <input id="user" type="text" class="validate" ng-model="login.user">
+        <input id="user" type="text" class="validate" ng-model="stream.user">
         <label for="user">Usuário</label>
     </div>
 
     <div class="input-field col s12" ng-show="!control.code">
         <i class="material-icons prefix">lock_outline</i>
-        <input id="password" type="password" class="validate" ng-model="login.password">
+        <input id="password" type="password" class="validate" ng-model="stream.password">
         <label for="password">Senha</label>
     </div>
 
@@ -72,7 +72,7 @@
         <label for="code">Code</label>
     </div>
     
-    <button class="btn waves-effect waves-light col s8 offset-s1 m6 offset-m1" ng-click="getstream(login)" >Submit
+    <button class="btn waves-effect waves-light col s8 offset-s1 m6 offset-m1" ng-click="getstream(stream)" >Submit
         <i class="material-icons right">send</i>
     </button>
     
